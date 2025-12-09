@@ -1,0 +1,207 @@
+# Module 03 — CALL / RET & Control Flow (x86)
+
+## 🎯 Objectives
+By the end of this module, you should be able to:
+- Understand how CALL and RET manage program flow
+- Know how functions are invoked at assembly level
+- Trace return addresses on the stack
+- Identify function boundaries in IDA and x32dbg
+- Understand how EIP changes during CALL and RET
+
+---
+
+# 🧠 1. What happens during a CALL?
+
+A `call` instruction does **two things**:
+
+### ✔ 1) Push the return address  
+This is the address of the instruction *after* the CALL.
+
+### ✔ 2) Jump to the target function  
+The CPU sets **EIP** = function address.
+
+### Example:
+```asm
+call my_function
+Internally:
+
+perl
+Copy code
+push return_address
+jmp my_function
+This is why every function has access to its return address at:
+
+csharp
+Copy code
+[ebp+4]
+🧩 2. Function Return Value (EAX)
+The return value of a function is placed in EAX.
+
+Example:
+
+asm
+Copy code
+mov eax, 5
+ret
+In C:
+
+c
+Copy code
+return 5;
+EAX = function result
+RET = send result back to caller.
+
+🛑 3. The RET Instruction
+RET performs:
+
+perl
+Copy code
+pop eip
+Meaning:
+
+It pops the saved return address from the stack
+
+Then sets EIP = that address
+
+Execution continues where the CALL originated
+
+Example:
+Caller:
+
+asm
+Copy code
+call add_numbers
+mov ecx, eax
+Callee:
+
+asm
+Copy code
+add_numbers:
+    mov eax, 10
+    ret
+Logic:
+
+CALL pushes next instruction address
+
+add_numbers sets EAX
+
+RET loads EIP with saved return address
+
+Execution continues at: mov ecx, eax
+
+🔢 4. RET N (Stack Cleanup)
+ret n means:
+
+csharp
+Copy code
+ret n  →  ret + add esp, n
+Used to remove arguments from the stack after a function call in stdcall calling convention.
+
+Example:
+
+asm
+Copy code
+ret 8
+Equivalent to:
+
+asm
+Copy code
+ret
+add esp, 8
+🔄 5. Control Flow in Assembly
+Control flow is determined by:
+
+✔ CALL
+Enter a function
+
+✔ RET
+Return to caller
+
+✔ Conditional jumps
+JE / JNE / JG / JL / JZ / JNZ
+
+✔ Unconditional jumps
+JMP
+
+✔ Loops
+LOOP, JNZ, DEC + JNZ, etc.
+
+🔍 6. CALL Graph in IDA
+IDA creates a call graph showing:
+
+which functions call others
+
+entry points
+
+function boundaries
+
+return flow
+
+Press:
+
+sql
+Copy code
+F4 → Function calls window  
+Space → Graph View  
+🧪 7. Real Example Breakdown
+Caller:
+asm
+Copy code
+push 5
+push 3
+call add
+add esp, 8
+mov ebx, eax
+Callee:
+asm
+Copy code
+add:
+    mov eax, [ebp+8]   ; first argument
+    add eax, [ebp+0xC] ; second argument
+    ret
+Flow:
+
+Caller pushes args
+
+CALL → pushes return address
+
+Function computes result
+
+RET → jumps back
+
+Caller reads EAX result
+
+🧭 8. CALL-RET Flow in Debugger (x32dbg)
+To trace a CALL:
+Set a breakpoint before CALL
+
+Press F7 (Step Into) → enters function
+
+Inside function, press F8 (Step Over instructions)
+
+RET will return to the caller
+
+EIP jumps back automatically
+
+📌 9. Quick Notes Summary
+CALL automatically pushes return address
+
+RET pops return address
+
+EAX always holds function return value
+
+ret n cleans arguments from the stack
+
+CALL and RET control most high-level function flow
+
+IDA graph view shows function call relationships
+
+Debuggers show real-time EIP flow through CALL/RET
+
+🎯 10. Exercises
+✔ Q1: What two things does CALL do?
+✔ Q2: Where is the return address stored in the callee?
+✔ Q3: What does RET do to EIP?
+✔ Q4: Explain the difference between ret and ret 8.
+✔ Q5: Why is EAX important after a RET?
+✔ Q6: Trace a simple CALL/RET flow in x32dbg.
