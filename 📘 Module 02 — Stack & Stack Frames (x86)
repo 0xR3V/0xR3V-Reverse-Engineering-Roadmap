@@ -1,0 +1,187 @@
+# Module 02 — Stack & Stack Frames (x86)
+
+## 🎯 Objectives
+By the end of this module, you should be able to:
+- Understand how the stack works internally
+- Recognize function prologues and epilogues
+- Identify where arguments and local variables are stored
+- Visualize the stack layout in IDA and x32dbg
+- Understand why EBP stays fixed while ESP moves
+
+---
+
+# 🧠 1. What is the Stack?
+
+The **stack** is a Last-In-First-Out (LIFO) memory region used for:
+- Function calls
+- Local variables
+- Arguments
+- Saved registers
+- Return addresses
+
+The stack grows **downward** (from high memory → low memory).
+
+---
+
+# 🏗️ 2. Stack Frame Structure
+
+Every function creates a **stack frame**, used to organize:
+- Arguments
+- Local variables
+- Saved registers
+
+A stack frame is built using the **prologue**:
+
+```asm
+push ebp
+mov  ebp, esp
+sub  esp, XX
+Meaning:
+push ebp → save old base pointer
+
+mov ebp, esp → create a new frame
+
+sub esp, XX → reserve space for local variables
+
+📐 3. Visual Layout of a Stack Frame
+less
+Copy code
+          Higher memory addresses
+          ------------------------
+[ebp+0xC]    → Argument 2
+[ebp+8]      → Argument 1
+------------------------
+[ebp]        → Old EBP (saved)
+[ebp-4]      → Local variable #1
+[ebp-8]      → Local variable #2
+[ebp-0x10]   → Local buffers / arrays
+------------------------
+          Lower memory addresses
+Important:
+Arguments → positive offsets (above EBP)
+
+Locals → negative offsets (below EBP)
+
+🎬 4. Function Epilogue
+Every standard function ends with:
+
+asm
+Copy code
+mov esp, ebp
+pop ebp
+ret
+Meaning:
+Restore old ESP
+
+Restore old EBP
+
+Jump back to caller using the return address on the stack
+
+🧭 5. Return Address (CALL behavior)
+When a function is called:
+
+asm
+Copy code
+call Function
+The CPU does:
+
+Push the next instruction address (return address)
+
+Jump to the function
+
+The return address sits at:
+
+csharp
+Copy code
+[ebp+4]
+Inside the callee.
+
+📌 6. Local Variables
+Local variables are placed below EBP, example:
+
+asm
+Copy code
+mov [ebp-4], eax
+mov [ebp-8], ecx
+This means:
+
+A local variable is stored at [ebp-4]
+
+Another local variable is at [ebp-8]
+
+If you see:
+
+asm
+Copy code
+sub esp, 40h
+This means 0x40 bytes of local stack space were reserved.
+
+📤 7. Arguments (Parameters)
+Arguments passed to a function sit above EBP:
+
+asm
+Copy code
+[ebp+8]   → argument #1
+[ebp+0xC] → argument #2
+Example:
+
+asm
+Copy code
+mov eax, [ebp+8]   ; load first argument
+mov ecx, [ebp+0xC] ; load second argument
+🔍 8. Saved Registers
+Callee-saved registers (EBX, ESI, EDI, EBP) are usually preserved:
+
+asm
+Copy code
+push ebx
+push esi
+push edi
+Restored at the end:
+
+asm
+Copy code
+pop edi
+pop esi
+pop ebx
+💡 9. Why EBP is Stable (and ESP is not)
+ESP changes constantly (push/pop)
+
+EBP is fixed for the entire function
+→ therefore used as a reference for locals & arguments
+
+This is why debuggers like x32dbg show clean stack frames using EBP.
+
+🧪 10. Real Example (IDA/x32dbg)
+asm
+Copy code
+push ebp
+mov  ebp, esp
+sub  esp, 20h
+
+mov  eax, [ebp+8]    ; argument #1
+mov  ecx, [ebp-4]    ; local variable
+🗒️ 11. Quick Notes Summary
+Stack grows downward
+
+push decreases ESP
+
+pop increases ESP
+
+call pushes return address
+
+ret pops return address
+
+Arguments: [ebp+8], [ebp+0xC], …
+
+Locals: [ebp-4], [ebp-8], …
+
+EBP stays fixed, ESP moves
+
+🎯 12. Exercises
+✔ Q1: Draw a stack frame with 2 arguments and 3 local variables.
+✔ Q2: Explain why EBP must remain fixed.
+✔ Q3: What is stored at [ebp+4]?
+✔ Q4: What is the purpose of sub esp, XX?
+✔ Q5: Why does call push the return address automatically?
+
