@@ -1,0 +1,212 @@
+🎯 Objectives
+
+By the end of this module, you will be able to:
+
+Understand how Windows executables import external functions (APIs).
+
+Identify which DLLs and functions a program uses.
+
+Use CFF Explorer, IDA, and x32dbg to read the Import Table.
+
+Trace API calls inside disassembly.
+
+Guess program behavior without running it based on its imports.
+
+Follow IAT entries and cross-references to reach important code paths.
+
+🧠 1. What Is the Import Table?
+
+An executable does not contain the code of Windows API functions inside it.
+Instead, it contains:
+
+DLL name (e.g., KERNEL32.dll, USER32.dll)
+
+Function name (e.g., MessageBoxA, CreateFileA)
+
+RVA to the import list
+
+A runtime popu­lated table: IAT — Import Address Table
+
+✔ Import Table = The static description
+✔ IAT = The runtime table containing real function addresses
+🧠 2. Why Is IAT Important in Reverse Engineering?
+
+Because you can often figure out:
+
+Does the program show GUI? → MessageBoxA, DialogBoxParamA
+
+Does it work with files? → CreateFileA, ReadFile, WriteFile
+
+Does it connect to the Internet? → WinHttp*, InternetOpenA
+
+Does it manipulate processes? → CreateProcessA, OpenProcess
+
+Does it check serial keys? → strcmp, strncmp, GetDlgItemTextA
+
+You can understand the program without executing it.
+
+🧪 3. Reading the Import Table in CFF Explorer
+
+Open the EXE
+
+Go to:
+Data Directories → Import Directory
+
+You will see:
+
+KERNEL32.dll
+    CreateFileA
+    ReadFile
+    lstrcmpA
+USER32.dll
+    MessageBoxA
+MSVCRT.dll
+    printf
+
+
+Each DLL expands into its imported functions.
+
+🧠 4. IAT Inside IDA
+
+In IDA:
+
+Open:
+View → Open Subviews → Imports
+
+IDA will show:
+
+KERNEL32.dll
+   ! CreateFileA
+   ! GetModuleHandleA
+USER32.dll
+   ! MessageBoxA
+MSVCRT.dll
+   ! strcmp
+
+
+Double-click any function → IDA jumps to IAT entry.
+
+Press X to view Xrefs → you will see where the program calls that API.
+
+This is usually how we find:
+
+Validation code
+
+Registration screens
+
+File operations
+
+Malware behaviors
+
+🧠 5. IAT in x32dbg
+
+Inside x32dbg:
+
+Load the program.
+
+Go to Imports tab.
+
+You will see all imported functions.
+
+Double-click an entry → jump to its IAT address.
+
+Find all call dword ptr [IAT_Function].
+
+This is the runtime equivalent of IDA’s Xrefs.
+
+🧩 6. How Import Resolution Works (Short Version)
+
+At load time:
+
+Windows loads required DLLs.
+
+For each imported function, Windows resolves its address using GetProcAddress.
+
+Windows writes the resolved address into the IAT.
+
+The program calls functions indirectly via call [IAT].
+
+🧠 7. IAT vs INT (Import Name Table)
+Table	Meaning	Used for
+INT	Function names	For loader to find functions
+IAT	Actual addresses	What the program calls
+
+For reverse engineering, the IAT is what matters.
+
+🔍 8. Recognizing API Calls in Disassembly
+
+Typical IAT call:
+
+call ds:MessageBoxA
+
+
+or:
+
+call dword ptr ds:[0x404000]
+
+
+If the address belongs to .idata section → it's an API call.
+
+🧠 9. Why CrackMes rely on IAT
+
+Because you can quickly find:
+
+Validation functions
+
+GUI prompts (“Correct!”, “Wrong serial!”)
+
+Interactions with user input
+
+Most serial-checking CrackMes call:
+
+GetDlgItemTextA
+strcmp
+MessageBoxA
+
+
+So you just follow the Xrefs from these APIs → reach the validation logic.
+
+🧪 10. Practical Exercise
+Exercise A — Read Imports
+
+Using CFF Explorer:
+
+List all DLLs imported.
+
+Under each DLL, list at least 3 functions.
+
+Exercise B — IDA Xrefs
+
+Open the EXE in IDA.
+
+Go to Imports.
+
+Find MessageBoxA, strcmp, or GetDlgItemTextA.
+
+Press X and follow the call location.
+
+Identify where success/fail messages appear.
+
+Exercise C — x32dbg
+
+Load program.
+
+Go to Imports tab.
+
+Double-click on some imported API.
+
+Break when the call executes.
+
+📝 Summary
+
+Import Table describes what functions the program wants.
+
+IAT is the actual addresses patched at runtime.
+
+IDA’s Imports view + Xrefs = fastest way to reach important logic.
+
+CrackMes heavily rely on a small set of APIs → easy to detect.
+
+Debuggers allow tracking the moment an API is called.
+
+
