@@ -1,212 +1,185 @@
-🎯 Objectives
+🔍 Overview
 
-By the end of this module, you will be able to:
-
-Understand how Windows executables import external functions (APIs).
-
-Identify which DLLs and functions a program uses.
-
-Use CFF Explorer, IDA, and x32dbg to read the Import Table.
-
-Trace API calls inside disassembly.
-
-Guess program behavior without running it based on its imports.
-
-Follow IAT entries and cross-references to reach important code paths.
-
-🧠 1. What Is the Import Table?
-
-An executable does not contain the code of Windows API functions inside it.
-Instead, it contains:
-
-DLL name (e.g., KERNEL32.dll, USER32.dll)
-
-Function name (e.g., MessageBoxA, CreateFileA)
-
-RVA to the import list
-
-A runtime popu­lated table: IAT — Import Address Table
-
-✔ Import Table = The static description
-✔ IAT = The runtime table containing real function addresses
-🧠 2. Why Is IAT Important in Reverse Engineering?
-
-Because you can often figure out:
-
-Does the program show GUI? → MessageBoxA, DialogBoxParamA
-
-Does it work with files? → CreateFileA, ReadFile, WriteFile
-
-Does it connect to the Internet? → WinHttp*, InternetOpenA
-
-Does it manipulate processes? → CreateProcessA, OpenProcess
-
-Does it check serial keys? → strcmp, strncmp, GetDlgItemTextA
-
-You can understand the program without executing it.
-
-🧪 3. Reading the Import Table in CFF Explorer
-
-Open the EXE
-
-Go to:
-Data Directories → Import Directory
-
-You will see:
+Windows executables do not contain the code of Windows API functions.
+Instead, they reference external DLLs such as:
 
 KERNEL32.dll
-    CreateFileA
-    ReadFile
-    lstrcmpA
+
 USER32.dll
-    MessageBoxA
+
 MSVCRT.dll
-    printf
+
+Understanding these imports allows a reverse engineer to:
+
+Predict program behavior without executing it
+
+Identify GUI, file, registry, or network operations
+
+Locate serial validation logic in CrackMes
+
+Analyze malware capabilities
+
+Follow API calls directly to critical parts of the code
+
+🧠 What Is the Import Table?
+
+Each executable contains:
+
+List of DLLs it depends on
+
+List of functions imported from each DLL
+
+RVAs of import structures
+
+IAT (Import Address Table) entries that get filled at runtime
+
+✔ Import Table = Static description
+✔ IAT = Runtime table with real addresses
+🧠 Reading the Import Directory in CFF Explorer
+
+CFF Explorer clearly shows:
+
+DLL names
+
+Number of imported functions
+
+IAT and INT addresses
+
+List of APIs under each DLL
+
+📸 Screenshot — Import Directory (CFF Explorer):
+
+From the screenshot:
+
+USER32.dll → 9 functions
+
+KERNEL32.dll → 63 functions
+
+This tells us the program uses:
+
+GUI APIs (USER32)
+
+System-level APIs (KERNEL32)
+
+🧠 Understanding USER32.dll Imports
+
+USER32.dll contains typical GUI-related APIs such as:
+
+Function	Meaning
+MessageBoxA	Shows a popup message
+GetDlgItemTextA	Reads text from an input field
+CreateDialogParamA	Creates a dialog window
+PostQuitMessage	Ends the message loop
+ShowWindow	Displays a window
+
+These functions indicate the EXE is GUI-based and interacts with the user.
+
+🧠 Viewing API Usage in IDA (Xrefs)
+
+IDA provides an Imports view showing all DLLs and imported functions.
+More importantly, you can check:
+
+✔ Where each API is used
+
+(Using Xrefs — Cross References)
+
+Example:
+When you check MessageBoxA references, IDA shows all code locations calling it.
+
+📸 Screenshot — Xrefs to MessageBoxA:
+
+This reveals:
+
+Success message block (“Congrats!”)
+
+Failure message block (“Wrong serial”)
+
+Validation logic leading to those blocks
+
+🧠 Why This Is Important?
+
+Because these Xrefs often lead directly to:
+
+The serial checking function
+
+The main validation loop
+
+Error and success dialogs
+
+Program's core functionality
+
+IAT + Xrefs = super fast navigation to the important logic.
+
+🧩 How IAT Works Internally
+
+At runtime:
+
+Windows loads DLLs
+
+For each imported function:
+
+Uses GetProcAddress to find its address
+
+Writes the address into the IAT
+
+The program later calls functions using:
+
+call dword ptr ds:[IAT_Function]
 
 
-Each DLL expands into its imported functions.
+If the call operand is inside .idata, it’s an API call.
 
-🧠 4. IAT Inside IDA
+🧪 Exercises (Required)
+Exercise A — CFF Explorer
 
-In IDA:
+List all DLLs imported by the EXE and predict:
 
-Open:
-View → Open Subviews → Imports
+Is it GUI?
 
-IDA will show:
+Does it read user input?
 
-KERNEL32.dll
-   ! CreateFileA
-   ! GetModuleHandleA
-USER32.dll
-   ! MessageBoxA
-MSVCRT.dll
-   ! strcmp
+Does it compare strings?
 
-
-Double-click any function → IDA jumps to IAT entry.
-
-Press X to view Xrefs → you will see where the program calls that API.
-
-This is usually how we find:
-
-Validation code
-
-Registration screens
-
-File operations
-
-Malware behaviors
-
-🧠 5. IAT in x32dbg
-
-Inside x32dbg:
-
-Load the program.
-
-Go to Imports tab.
-
-You will see all imported functions.
-
-Double-click an entry → jump to its IAT address.
-
-Find all call dword ptr [IAT_Function].
-
-This is the runtime equivalent of IDA’s Xrefs.
-
-🧩 6. How Import Resolution Works (Short Version)
-
-At load time:
-
-Windows loads required DLLs.
-
-For each imported function, Windows resolves its address using GetProcAddress.
-
-Windows writes the resolved address into the IAT.
-
-The program calls functions indirectly via call [IAT].
-
-🧠 7. IAT vs INT (Import Name Table)
-Table	Meaning	Used for
-INT	Function names	For loader to find functions
-IAT	Actual addresses	What the program calls
-
-For reverse engineering, the IAT is what matters.
-
-🔍 8. Recognizing API Calls in Disassembly
-
-Typical IAT call:
-
-call ds:MessageBoxA
-
-
-or:
-
-call dword ptr ds:[0x404000]
-
-
-If the address belongs to .idata section → it's an API call.
-
-🧠 9. Why CrackMes rely on IAT
-
-Because you can quickly find:
-
-Validation functions
-
-GUI prompts (“Correct!”, “Wrong serial!”)
-
-Interactions with user input
-
-Most serial-checking CrackMes call:
-
-GetDlgItemTextA
-strcmp
-MessageBoxA
-
-
-So you just follow the Xrefs from these APIs → reach the validation logic.
-
-🧪 10. Practical Exercise
-Exercise A — Read Imports
-
-Using CFF Explorer:
-
-List all DLLs imported.
-
-Under each DLL, list at least 3 functions.
+Does it interact with files or registry?
 
 Exercise B — IDA Xrefs
 
-Open the EXE in IDA.
+In IDA:
 
-Go to Imports.
+Open Imports window
 
-Find MessageBoxA, strcmp, or GetDlgItemTextA.
+Click MessageBoxA, then press X
 
-Press X and follow the call location.
+Document the following:
 
-Identify where success/fail messages appear.
+Success message block
+
+Failure message block
+
+Condition between them (cmp / test)
 
 Exercise C — x32dbg
 
-Load program.
+In x32dbg:
 
-Go to Imports tab.
+Load the program
 
-Double-click on some imported API.
+Open Imports tab
 
-Break when the call executes.
+Double click an API (like MessageBoxA)
+
+Set a breakpoint
+
+Run the program and observe when the API is called
 
 📝 Summary
 
-Import Table describes what functions the program wants.
+Import Table reveals program behavior without execution
 
-IAT is the actual addresses patched at runtime.
+IAT contains real addresses of APIs at runtime
 
-IDA’s Imports view + Xrefs = fastest way to reach important logic.
+IDA Xrefs quickly lead you to validation functions in CrackMes
 
-CrackMes heavily rely on a small set of APIs → easy to detect.
+USER32/Kernel32 imports tell you what the program does
 
-Debuggers allow tracking the moment an API is called.
-
-
+Understanding imports is essential for malware analysis and RE
