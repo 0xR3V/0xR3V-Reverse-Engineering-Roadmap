@@ -10,6 +10,9 @@ USER32.dll
 MSVCRT.dll
 
 Understanding these imports allows a reverse engineer to:
+## CFF Explorer — Import Directory
+
+![CFF Imports](./images/cff_imports.png)
 
 Predict program behavior without executing it
 
