@@ -78,6 +78,7 @@ ShowWindow	Displays a window
 These functions indicate the EXE is GUI-based and interacts with the user.
 
 🧠 Viewing API Usage in IDA (Xrefs)
+![IDA Imports](./images/ida_imports.png)
 
 IDA provides an Imports view showing all DLLs and imported functions.
 More importantly, you can check:
