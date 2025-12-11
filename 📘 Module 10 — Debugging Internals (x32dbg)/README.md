@@ -1,49 +1,47 @@
-# 📘 Module 10 — Debugging Internals (x32dbg)
+🔍 Overview
 
----
+Debugging is the core of practical reverse engineering.
+In this module you will learn how to:
 
-## 🔍 Overview
+Use breakpoints (software / hardware / memory)
 
-Debugging is the core of practical reverse engineering.  
-In this module, you learn how to:
+Control execution flow (F7 / F8 / Step Out)
 
-- Control program execution  
-- Understand runtime behavior  
-- Inspect registers & memory  
-- Use breakpoints effectively  
-- Trace instructions  
-- Follow validation logic live  
+Inspect registers during execution
 
-x32dbg allows you to *freeze time*, move line by line, and watch the program think.
+Track memory changes in real-time
 
----
+Follow CALL → RET logic
 
-# 🧩 1) Software Breakpoints (INT 3)
+Use Trace to reveal hidden behavior
 
-A software breakpoint inserts the byte:
+Analyze validation functions in CrackMes
 
-```asm
+x32dbg allows you to “freeze time” and watch how a program thinks.
+
+🧩 1) Software Breakpoints (INT 3)
+
+Software breakpoints insert the byte:
+
 CC
-When the CPU executes it → the debugger pauses.
+
+
+When executed → debugger pauses instantly.
 
 ✔ How to set:
-text
-Copy code
-Right-click instruction → Breakpoint → Toggle  (or F2)
-✔ Best use cases:
-Checking CMP instructions
+Right-click instruction → Breakpoint → Toggle (or press F2)
 
-Stopping before validation logic
+📸 Screenshot
+![Software Breakpoint](./images/software_bp.png)
 
-Inspecting register values
-
-📸 Example Screenshot
 
 🧩 2) Hardware Breakpoints (DR0–DR3)
+
 Hardware breakpoints use CPU debug registers.
-They do not modify the program code.
+They do NOT modify program code → harder to detect.
 
 ✔ Types:
+
 On execution
 
 On read
@@ -52,172 +50,200 @@ On write
 
 On access
 
-✔ Why they are powerful:
-Bypass anti-debug checks
+✔ Why they matter:
 
-Detect who modifies a variable
+Bypass anti-debug tricks
 
-Perfect for tracking buffers
+Perfect for serial/password tracking
 
-📸 Example Screenshot
+Ideal for catching “who modifies this memory?”
 
-🧩 3) Memory Breakpoints (on Read/Write)
-Used to stop program when a specific address changes.
+📸 Screenshot
+![Hardware Breakpoint](./images/hardware_bp.png)
+
+
+🧩 3) Memory Breakpoints (on Read / Write)
+
+Stops execution when a specific memory address changes.
 
 ✔ Best use cases:
-Serial buffer tracking
 
-Password modification
+Tracking serial buffers
 
-Locating XOR/add/sub transformations
+Watching XOR/add/sub transformations
+
+Detecting corruption or hidden writes
 
 ✔ How to set:
-text
-Copy code
 Right-click memory → Breakpoint → Memory, on write
-📸 Example Screenshot
+
+📸 Screenshot
+![Memory Breakpoint](./images/memory_bp.png)
+
 
 🧩 4) Stepping (F7 / F8 / Step Out)
 🔹 F7 — Step Into
-Enter the function being called.
+
+Enter inside the function being CALLed.
 
 🔹 F8 — Step Over
-Execute CALL without entering the function.
+
+Execute CALL but do not enter it.
 
 🔹 Step Out
-Exit current function and return to caller.
 
-📸 Example Screenshot
+Return to caller instantly.
+
+📸 Screenshot
+![Stepping](./images/stepping.png)
+
 
 🧩 5) CALL / RET Runtime Flow
 CALL does:
-asm
-Copy code
 push return_address
 jmp function
+
 RET does:
-asm
-Copy code
 pop eip
-This reveals:
 
-Start of validation function
+✔ Useful for:
 
-End of validation logic
+Finding validation function start
 
-Return values in EAX
+Tracing return values
 
-📸 Example Screenshot
+Watching EAX before final decision
+
+📸 Screenshot
+![CALL RET](./images/call_ret.png)
+
 
 🧩 6) Instruction Tracing (Run Trace)
-Run Trace records every executed instruction, including:
+
+Trace records every instruction executed, including:
 
 Register changes
 
-Memory writes
+Memory modifications
 
-Branch decisions
+Jumps taken
 
-✔ What it helps with:
-Understanding complex serial algorithms
+Execution path through functions
 
-Detecting hidden loops
+✔ Why Trace is powerful:
 
-Tracking obfuscated logic
+Reveals hidden algorithms
+
+Shows password transformation
+
+Uncovers obfuscation tricks
+
+Helps understand malware behavior
 
 ✔ How to start:
-text
-Copy code
 Debug → Run trace
-📸 Example Screenshot
 
-🧩 7) Inspecting Registers (EAX, ECX, ESP, EIP...)
-Watch registers while stepping:
+📸 Screenshot
+![Instruction Trace](./images/trace.png)
 
-EAX → return values
+
+🧩 7) Inspecting Registers (EAX, ECX, EIP, ESP...)
+
+Registers change on every instruction.
+
+✔ Most important:
+
+EAX → return value of functions
 
 ECX → loop counter
 
 ESP / EBP → stack frame
 
-ZF → jump decisions
+ZF → jump decision accuracy
 
 EIP → next instruction
 
-📸 Example Screenshot
+📸 Screenshot
+![Registers](./images/registers.png)
+
 
 🧩 8) Memory Dump Window
-Displays:
+
+Shows:
 
 ASCII buffer
 
-Hex values
+HEX bytes
 
-Serial transformation
+Stack variables
 
-Dynamic data changes
+Dynamic changes in input/serial
 
-✔ Useful for:
-Watching how serial is processed
+✔ Best use cases:
 
-Understanding XOR/add/sub encoding
+Watching input transformation
 
-Inspecting strings and stack data
+Understanding validation logic
 
-📸 Example Screenshot
+Monitoring stack variables
+
+📸 Screenshot
+![Memory Dump](./images/memory_dump.png)
+
 
 🧪 Exercises
 ✔ Exercise A — Software BP
-Place a breakpoint on a CMP instruction and determine:
 
-The value in EAX
+Place breakpoint on CMP instruction and observe:
 
-State of the Zero Flag
+EAX value
 
-If jump is taken
+ZF flag
+
+Jump taken or not
 
 ✔ Exercise B — Memory BP
-Put memory breakpoint on serial buffer:
 
-Enter a serial
+Set memory breakpoint on serial buffer:
 
-Watch who writes to the buffer
+Enter serial
 
-View how validation happens
+Watch how buffer changes
+
+Find validation routine
 
 ✔ Exercise C — Run Trace
+
 Use trace to:
 
-Identify where EAX changes
+Find where EAX changes
 
-Reveal hidden loops
+Follow full validation path
 
-Find the final success/fail condition
+Identify success/fail block
 
 📝 Summary
-In this module, you learned:
 
-Software/hardware breakpoints
+In this module you learned:
 
-Memory breakpoints
+Software / hardware / memory breakpoints
 
-Step Into / Step Over
+Stepping (F7 / F8 / Step Out)
 
-CALL/RET flow
+CALL → RET flow
+
+Trace analysis
 
 Register inspection
 
-Memory dump analysis
+Memory dump usage
 
-Full instruction tracing
+This skillset transforms you into a runtime reverse engineer, ready for:
 
-This knowledge transforms you from static analyst → runtime debugger, ready for:
-
-Tough CrackMes
+CrackMes
 
 Malware analysis
 
-Anti-debug bypass
+Packed executables
 
-Unpacking schemes
-
+Anti-debug bypass challenges
